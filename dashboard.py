@@ -999,6 +999,25 @@ canvas {
     }
 }
 
+
+/* SENTIXAI LARGE STOCK SEARCH */
+.stock-search-wrap {
+    width: 100%;
+    margin-bottom: 18px;
+}
+.stock-search {
+    width: 100% !important;
+    min-height: 72px !important;
+    box-sizing: border-box !important;
+    padding: 20px 24px !important;
+    font-size: 19px !important;
+    border-radius: 14px !important;
+    border-width: 2px !important;
+}
+.stock-search::placeholder {
+    font-size: 17px;
+}
+
 </style>
 </head>
 
