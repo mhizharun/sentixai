@@ -351,7 +351,7 @@ body {
 }
 
 .market-status {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -1081,7 +1081,6 @@ canvas {
         type="text"
         placeholder="Search 2,800+ Bitget Reality stocks..."
         autocomplete="off"
-        oninput="searchStocks(this.value)"
     >
     <div id="stockSearchResults" class="stock-search-results"></div>
 </div>
@@ -2114,6 +2113,25 @@ setInterval(
 
 
 let stockSearchTimer = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("stockSearch");
+
+    if (!input) {
+        console.error("SentixAI: stockSearch input not found");
+        return;
+    }
+
+    input.addEventListener("input", () => {
+        searchStocks(input.value);
+    });
+
+    input.addEventListener("focus", () => {
+        if (input.value.trim()) {
+            searchStocks(input.value);
+        }
+    });
+});
 
 function clearStockSearch() {
     const results = document.getElementById("stockSearchResults");
