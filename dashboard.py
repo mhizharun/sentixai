@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import threading
@@ -14,7 +15,7 @@ from sentixai import (
 )
 
 HOST = "0.0.0.0"
-PORT = 8080
+PORT = int(os.environ.get("PORT", "8080"))
 
 SYMBOLS = ["AMZN", "NVDA", "MSFT", "AAPL", "TSLA"]
 
