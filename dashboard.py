@@ -19,6 +19,105 @@ PORT = int(os.environ.get("PORT", "8080"))
 
 SYMBOLS = ["AMZN", "NVDA", "MSFT", "AAPL", "TSLA"]
 
+_STOCK_UNIVERSE = []
+_STOCK_UNIVERSE_TIME = 0
+_STOCK_UNIVERSE_LOCK = threading.Lock()
+_STOCK_UNIVERSE_CACHE_SECONDS = 600
+
+
+def get_stock_universe():
+    global _STOCK_UNIVERSE, _STOCK_UNIVERSE_TIME
+
+    now = time.time()
+
+    with _STOCK_UNIVERSE_LOCK:
+        if (
+            _STOCK_UNIVERSE
+            and now - _STOCK_UNIVERSE_TIME < _STOCK_UNIVERSE_CACHE_SECONDS
+        ):
+            return _STOCK_UNIVERSE
+
+        import urllib.request
+
+        url = "https://api.bitget.com/api/v3/reality/market/stock-info"
+
+        request = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "SentixAI/1.0",
+                "Accept": "application/json",
+            },
+        )
+
+        with urllib.request.urlopen(request, timeout=20) as response:
+            payload = json.loads(response.read().decode())
+
+        rows = payload.get("data", [])
+        universe = []
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+
+            symbol = str(row.get("code", "") or "").upper().strip()
+            bitget_symbol = str(row.get("symbol", "") or "").strip()
+
+            if not symbol or not bitget_symbol:
+                continue
+
+            universe.append({
+                "symbol": symbol,
+                "name": row.get("name") or symbol,
+                "bitget_symbol": bitget_symbol,
+                "trading_period": row.get("tradingPeriod", []),
+                "weekend_tradable": row.get("weekendTradable"),
+            })
+
+        universe.sort(key=lambda item: item["symbol"])
+
+        _STOCK_UNIVERSE = universe
+        _STOCK_UNIVERSE_TIME = now
+
+        return _STOCK_UNIVERSE
+
+
+def search_stock_universe(query="", limit=12):
+    query = str(query or "").strip().upper()
+    universe = get_stock_universe()
+
+    if not query:
+        return universe[:limit]
+
+    exact = []
+    starts = []
+    contains = []
+
+    for item in universe:
+        symbol = item["symbol"]
+        name = str(item.get("name", "") or "").upper()
+
+        if symbol == query:
+            exact.append(item)
+        elif symbol.startswith(query):
+            starts.append(item)
+        elif query in symbol or query in name:
+            contains.append(item)
+
+    return (exact + starts + contains)[:limit]
+
+
+def is_known_stock(symbol):
+    symbol = str(symbol or "").upper().strip()
+
+    if not symbol:
+        return False
+
+    return any(
+        item["symbol"] == symbol
+        for item in get_stock_universe()
+    )
+
+
 
 def normalize_history(rows):
     result = []
@@ -974,7 +1073,20 @@ canvas {
         </button>
     </div>
 
-    <div class="tabs">
+    
+<div class="stock-search-wrap">
+    <input
+        id="stockSearch"
+        class="stock-search"
+        type="text"
+        placeholder="Search 2,800+ Bitget Reality stocks..."
+        autocomplete="off"
+        oninput="searchStocks(this.value)"
+    >
+    <div id="stockSearchResults" class="stock-search-results"></div>
+</div>
+
+<div class="tabs">
         <button class="tab active" data-symbol="AMZN">AMZN</button>
         <button class="tab" data-symbol="NVDA">NVDA</button>
         <button class="tab" data-symbol="MSFT">MSFT</button>
@@ -1948,6 +2060,13 @@ function selectSymbol(symbol) {
 
     currentSymbol = symbol;
 
+    const searchInput = document.getElementById("stockSearch");
+    if (searchInput) {
+        searchInput.value = symbol;
+    }
+
+    clearStockSearch();
+
     document.querySelectorAll(".tab")
         .forEach(tab => {
 
@@ -1992,6 +2111,126 @@ setInterval(
     },
     60000
 );
+
+
+let stockSearchTimer = null;
+
+function clearStockSearch() {
+    const results = document.getElementById("stockSearchResults");
+
+    if (results) {
+        results.innerHTML = "";
+        results.style.display = "none";
+    }
+}
+
+function chooseSearchedStock(symbol) {
+    const input = document.getElementById("stockSearch");
+
+    if (input) {
+        input.value = symbol;
+    }
+
+    clearStockSearch();
+    selectSymbol(symbol);
+}
+
+async function searchStocks(query) {
+    const results = document.getElementById("stockSearchResults");
+
+    if (!results) return;
+
+    query = query.trim();
+
+    if (!query) {
+        clearStockSearch();
+        return;
+    }
+
+    clearTimeout(stockSearchTimer);
+
+    stockSearchTimer = setTimeout(async () => {
+        try {
+            const response = await fetch(
+                "/api/stocks?q=" + encodeURIComponent(query)
+            );
+
+            const data = await response.json();
+
+            if (data.status !== "ok") {
+                throw new Error(data.message || "Search failed");
+            }
+
+            if (!data.stocks || !data.stocks.length) {
+                results.innerHTML =
+                    '<div class="stock-search-empty">' +
+                    'No Bitget Reality stock found.' +
+                    '</div>';
+
+                results.style.display = "block";
+                return;
+            }
+
+            results.innerHTML = data.stocks.map(stock => {
+                const symbol = String(stock.symbol || "");
+                const name = String(
+                    stock.name || symbol
+                )
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+
+                const bitget = String(
+                    stock.bitget_symbol || ""
+                )
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+
+                return (
+                    '<button class="stock-search-result" ' +
+                    'type="button" ' +
+                    'onclick="chooseSearchedStock(' +
+                    JSON.stringify(symbol) +
+                    ')">' +
+                    '<span class="stock-search-symbol">' +
+                    symbol +
+                    '</span>' +
+                    '<span class="stock-search-name">' +
+                    name +
+                    '</span>' +
+                    '<span class="stock-search-bitget">' +
+                    bitget +
+                    '</span>' +
+                    '</button>'
+                );
+            }).join("");
+
+            results.style.display = "block";
+
+        } catch (error) {
+            results.innerHTML =
+                '<div class="stock-search-empty">' +
+                'Search unavailable right now.' +
+                '</div>';
+
+            results.style.display = "block";
+
+            console.error(
+                "SentixAI stock search error:",
+                error
+            );
+        }
+    }, 180);
+}
+
+document.addEventListener("click", (event) => {
+    const wrap = document.querySelector(
+        ".stock-search-wrap"
+    );
+
+    if (wrap && !wrap.contains(event.target)) {
+        clearStockSearch();
+    }
+});
 
 </script>
 
@@ -2427,6 +2666,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
 
         parsed = urlparse(self.path)
+
+        if parsed.path == "/api/stocks":
+            params = parse_qs(parsed.query)
+            query = params.get("q", [""])[0]
+
+            try:
+                results = search_stock_universe(query, limit=12)
+                self.send_json({
+                    "status": "ok",
+                    "count": len(results),
+                    "total": len(get_stock_universe()),
+                    "stocks": results,
+                })
+            except Exception as e:
+                self.send_json({
+                    "status": "error",
+                    "message": f"{type(e).__name__}: {e}",
+                })
+
+            return
 
         if parsed.path == "/api/data":
 
