@@ -329,6 +329,123 @@ def get_market_data(symbol):
 
 
 
+def detect_market_catalysts(data):
+    """
+    Detect important market catalysts from verified Bitget Reality data.
+
+    This is intentionally data-driven. It does not invent news events.
+    """
+
+    symbol = str(data.get("symbol", "UNKNOWN"))
+    price = float(data.get("price", 0) or 0)
+    change_24h = float(data.get("change_24h", 0) or 0)
+    momentum = float(data.get("momentum", 0) or 0)
+    trend_5d = float(data.get("trend_5d", 0) or 0)
+    trend_10d = float(data.get("trend_10d", 0) or 0)
+    trend_20d = float(data.get("trend_20d", 0) or 0)
+    rsi = float(data.get("rsi_14", 50) or 50)
+    volatility = float(data.get("volatility_20d", 0) or 0)
+    price_vs_sma20 = float(data.get("price_vs_sma20", 0) or 0)
+
+    catalysts = []
+
+    positive_trends = sum(
+        value > 0
+        for value in (trend_5d, trend_10d, trend_20d)
+    )
+
+    negative_trends = sum(
+        value < 0
+        for value in (trend_5d, trend_10d, trend_20d)
+    )
+
+    if change_24h >= 5:
+        catalysts.append({
+            "type": "BULLISH MOMENTUM",
+            "strength": "HIGH",
+            "reason": f"{symbol} is up {change_24h:+.2f}% over 24H."
+        })
+    elif change_24h <= -5:
+        catalysts.append({
+            "type": "BEARISH MOMENTUM",
+            "strength": "HIGH",
+            "reason": f"{symbol} is down {change_24h:.2f}% over 24H."
+        })
+
+    if positive_trends == 3:
+        catalysts.append({
+            "type": "TREND ALIGNMENT",
+            "strength": "HIGH",
+            "reason": "5D, 10D and 20D trends are all positive."
+        })
+    elif negative_trends == 3:
+        catalysts.append({
+            "type": "TREND BREAKDOWN",
+            "strength": "HIGH",
+            "reason": "5D, 10D and 20D trends are all negative."
+        })
+
+    if rsi <= 30:
+        catalysts.append({
+            "type": "OVERSOLD",
+            "strength": "HIGH",
+            "reason": f"RSI 14 is {rsi:.1f}, indicating oversold conditions."
+        })
+    elif rsi >= 70:
+        catalysts.append({
+            "type": "OVERBOUGHT",
+            "strength": "HIGH",
+            "reason": f"RSI 14 is {rsi:.1f}, indicating overbought conditions."
+        })
+
+    if price_vs_sma20 >= 5:
+        catalysts.append({
+            "type": "SMA BREAKOUT",
+            "strength": "MEDIUM",
+            "reason": f"Price is {price_vs_sma20:+.2f}% above the 20-day SMA."
+        })
+    elif price_vs_sma20 <= -5:
+        catalysts.append({
+            "type": "SMA BREAKDOWN",
+            "strength": "MEDIUM",
+            "reason": f"Price is {price_vs_sma20:+.2f}% below the 20-day SMA."
+        })
+
+    if volatility >= 60:
+        catalysts.append({
+            "type": "HIGH VOLATILITY",
+            "strength": "HIGH",
+            "reason": f"20-day annualized volatility is {volatility:.1f}%."
+        })
+
+    if momentum >= 2 and positive_trends >= 2:
+        catalysts.append({
+            "type": "MOMENTUM CONFIRMATION",
+            "strength": "MEDIUM",
+            "reason": "Positive momentum is supported by the broader trend."
+        })
+    elif momentum <= -2 and negative_trends >= 2:
+        catalysts.append({
+            "type": "BEARISH CONFIRMATION",
+            "strength": "MEDIUM",
+            "reason": "Negative momentum is supported by the broader trend."
+        })
+
+    if not catalysts:
+        catalysts.append({
+            "type": "NO MAJOR TECHNICAL CATALYST",
+            "strength": "LOW",
+            "reason": "Current Bitget market data does not show a major catalyst."
+        })
+
+    return {
+        "symbol": symbol,
+        "price": price,
+        "catalysts": catalysts,
+        "source": "Bitget Reality",
+    }
+
+
 def score_fundamentals(data):
     """
     Score Bitget Reality company fundamentals.

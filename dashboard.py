@@ -12,6 +12,7 @@ from sentixai import (
     get_market_data,
     analyze_market,
     generate_ai_thesis,
+    detect_market_catalysts,
 )
 
 HOST = "0.0.0.0"
@@ -254,6 +255,16 @@ def get_dashboard_data(symbol="AMZN"):
             })
 
         selected = get_stock(symbol)
+
+        try:
+            selected["catalysts"] = detect_market_catalysts(selected)
+        except Exception as exc:
+            selected["catalysts"] = {
+                "symbol": symbol,
+                "catalysts": [],
+                "source": "Bitget Reality",
+                "error": str(exc),
+            }
 
         result = {
             "status": "ok",
@@ -741,6 +752,74 @@ canvas {
 
 
 /* SIGNAL BREAKDOWN */
+.market-intelligence {
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.025);
+}
+
+.catalyst-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.catalyst-item {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.035);
+    border-left: 3px solid #f4c95d;
+}
+
+.catalyst-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.catalyst-top strong {
+    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+.catalyst-strength {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 4px 7px;
+    border-radius: 5px;
+}
+
+.catalyst-strength.high {
+    color: #ff6478;
+    background: rgba(255,100,120,0.12);
+}
+
+.catalyst-strength.medium {
+    color: #f4c95d;
+    background: rgba(244,201,93,0.12);
+}
+
+.catalyst-strength.low {
+    color: #8c9aaa;
+    background: rgba(140,154,170,0.12);
+}
+
+.catalyst-reason {
+    color: #9ca8b7;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.catalyst-empty {
+    color: #8c9aaa;
+    font-size: 12px;
+    padding: 10px 0;
+}
+
 .signal-breakdown {
     margin-top: 16px;
     padding-top: 14px;
@@ -1138,6 +1217,18 @@ canvas {
 
                 <div class="source" id="bitgetSymbol">
                     Bitget symbol: --
+                </div>
+
+                <div class="market-intelligence">
+                    <div class="breakdown-title">
+                        MARKET INTELLIGENCE
+                    </div>
+
+                    <div id="catalystList" class="catalyst-list">
+                        <div class="catalyst-empty">
+                            Analyzing live Bitget market signals...
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -1779,6 +1870,36 @@ function render(data) {
 
     document.getElementById("breakSma").textContent =
         formatSignal(breakdownPriceVsSma);
+
+    // Market Intelligence / Catalyst Detection
+    const catalystList = document.getElementById("catalystList");
+
+    if (catalystList) {
+        const catalystData = s.catalysts?.catalysts || [];
+
+        if (!catalystData.length) {
+            catalystList.innerHTML =
+                '<div class="catalyst-empty">No major technical catalysts detected.</div>';
+        } else {
+            catalystList.innerHTML = catalystData.map(item => {
+                const strength = String(item.strength || "LOW");
+                const type = String(item.type || "MARKET SIGNAL");
+                const reason = String(item.reason || "");
+
+                return `
+                    <div class="catalyst-item">
+                        <div class="catalyst-top">
+                            <span class="catalyst-strength ${strength.toLowerCase()}">
+                                ${strength}
+                            </span>
+                            <strong>${type}</strong>
+                        </div>
+                        <div class="catalyst-reason">${reason}</div>
+                    </div>
+                `;
+            }).join("");
+        }
+    }
 
     // Color positive / negative signals
     [
