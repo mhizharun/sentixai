@@ -2358,6 +2358,7 @@ def sentix_chat_answer(symbol, question, market):
             "trend5": float(data.get("trend_5d", 0) or 0),
             "trend10": float(data.get("trend_10d", 0) or 0),
             "trend20": float(data.get("trend_20d", 0) or 0),
+            "momentum": float(data.get("momentum", 0) or 0),
             "price_vs_sma": float(data.get("price_vs_sma20", 0) or 0),
             "opportunity": float(
                 data.get("opportunity_score", data.get("confidence", 0))
@@ -2414,31 +2415,57 @@ def sentix_chat_answer(symbol, question, market):
             b = stock_summary(other_symbol, other_market)
 
             winner = a if a["opportunity"] >= b["opportunity"] else b
+            loser = b if winner is a else a
             gap = abs(a["opportunity"] - b["opportunity"])
 
             reasons = []
 
-            if winner["technical"] > (b if winner is a else a)["technical"]:
+            if winner["technical"] > loser["technical"]:
                 reasons.append(
-                    f"stronger technical score ({winner['technical']:.0f}/100)"
+                    f"stronger technical score ({winner['technical']:.0f}/100 vs {loser['technical']:.0f}/100)"
                 )
 
-            if winner["fundamental"] > (b if winner is a else a)["fundamental"]:
+            if winner["fundamental"] > loser["fundamental"]:
                 reasons.append(
-                    f"stronger fundamentals ({winner['fundamental']:.0f}/100)"
+                    f"stronger fundamentals ({winner['fundamental']:.0f}/100 vs {loser['fundamental']:.0f}/100)"
                 )
 
-            if winner["trend5"] > (b if winner is a else a)["trend5"]:
-                reasons.append("better 5D trend")
+            if winner["trend5"] > loser["trend5"]:
+                reasons.append(
+                    f"better 5D trend ({winner['trend5']:+.1f}% vs {loser['trend5']:+.1f}%)"
+                )
 
-            if winner["trend10"] > (b if winner is a else a)["trend10"]:
-                reasons.append("better 10D trend")
+            if winner["trend10"] > loser["trend10"]:
+                reasons.append(
+                    f"better 10D trend ({winner['trend10']:+.1f}% vs {loser['trend10']:+.1f}%)"
+                )
 
-            if winner["rsi"] < 70 <= (b if winner is a else a)["rsi"]:
-                reasons.append("healthier RSI structure")
+            if winner["trend20"] > loser["trend20"]:
+                reasons.append(
+                    f"better 20D trend ({winner['trend20']:+.1f}% vs {loser['trend20']:+.1f}%)"
+                )
+
+            if winner["momentum"] > loser["momentum"]:
+                reasons.append(
+                    f"stronger momentum ({winner['momentum']:+.1f}% vs {loser['momentum']:+.1f}%)"
+                )
+
+            if winner["rsi"] < 70 <= loser["rsi"]:
+                reasons.append(
+                    f"healthier RSI ({winner['rsi']:.1f} vs {loser['rsi']:.1f})"
+                )
+            elif winner["rsi"] < loser["rsi"] and winner["rsi"] >= 30:
+                reasons.append(
+                    f"more balanced RSI ({winner['rsi']:.1f} vs {loser['rsi']:.1f})"
+                )
+
+            if winner["price_vs_sma"] > loser["price_vs_sma"]:
+                reasons.append(
+                    f"stronger SMA20 structure ({winner['price_vs_sma']:+.1f}% vs {loser['price_vs_sma']:+.1f}%)"
+                )
 
             explanation = (
-                "; ".join(reasons[:3])
+                "; ".join(reasons[:4])
                 if reasons
                 else "the overall signals are very close"
             )
@@ -2461,6 +2488,10 @@ def sentix_chat_answer(symbol, question, market):
                 f"SentixAI currently ranks {winner['symbol']} higher "
                 f"by {gap:.1f} opportunity points.\n\n"
                 f"Why: {winner['symbol']} has {explanation}. "
+                f"Momentum: {a['symbol']} {a['momentum']:+.1f}% vs "
+                f"{b['symbol']} {b['momentum']:+.1f}%. "
+                f"SMA20: {a['symbol']} {a['price_vs_sma']:+.1f}% vs "
+                f"{b['symbol']} {b['price_vs_sma']:+.1f}%. "
                 f"Both stocks currently carry a {a['decision']} / {b['decision']} signal, "
                 f"so the comparison identifies the stronger setup rather than "
                 f"generating a new recommendation."
