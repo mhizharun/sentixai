@@ -2445,6 +2445,49 @@ def sentix_chat_answer(symbol, question, market):
 
     q = question.lower().strip()
 
+    # If the user explicitly names one stock in the question,
+    # analyze that stock instead of the currently selected dashboard stock.
+    import re
+
+    question_text = question.upper()
+    question_symbols = re.findall(
+        r"\b[A-Z]{1,6}\b",
+        question_text
+    )
+
+    universe_symbols = {
+        str(item.get("symbol", "")).upper().strip()
+        for item in get_stock_universe()
+    }
+
+    explicit_symbols = []
+    for candidate in question_symbols:
+        if (
+            candidate in universe_symbols
+            and candidate not in explicit_symbols
+        ):
+            explicit_symbols.append(candidate)
+
+    is_comparison = any(word in q for word in [
+        "compare",
+        "versus",
+        " vs ",
+        "better than",
+    ])
+
+    if len(explicit_symbols) == 1 and not is_comparison:
+        requested_symbol = explicit_symbols[0]
+
+        if requested_symbol != symbol:
+            requested_response = get_dashboard_data(requested_symbol)
+            requested_market = requested_response.get(
+                "selected",
+                requested_response
+            )
+
+            symbol = requested_symbol
+            market = requested_market
+
     price = float(market.get("price", 0) or 0)
     change = float(market.get("change_24h", 0) or 0)
     confidence = float(market.get("confidence", 0) or 0)
