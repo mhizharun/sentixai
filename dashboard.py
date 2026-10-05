@@ -2496,22 +2496,35 @@ def sentix_chat_answer(symbol, question, market):
 
     import re
 
-    question_symbols = set(
-        re.findall(r"\b[A-Z]{1,6}\b", question.upper())
-    )
+    question_text = question.upper()
 
     universe_symbols = {
         str(item.get("symbol", "")).upper().strip()
         for item in get_stock_universe()
     }
 
+    # Extract stock symbols from the user's comparison question
+    # in the order they were written.
+    question_symbols = re.findall(
+        r"\b[A-Z]{1,6}\b",
+        question_text
+    )
+
     for candidate_symbol in question_symbols:
         if (
             candidate_symbol
-            and candidate_symbol != symbol
             and candidate_symbol in universe_symbols
+            and candidate_symbol not in comparison_symbols
         ):
             comparison_symbols.append(candidate_symbol)
+
+    # If two symbols were explicitly named, compare those exact
+    # symbols instead of depending on the currently selected stock.
+    if len(comparison_symbols) >= 2:
+        comparison_symbols = comparison_symbols[:2]
+    elif len(comparison_symbols) == 1:
+        if comparison_symbols[0] == symbol:
+            comparison_symbols = []
 
     if (
         any(word in q for word in [
