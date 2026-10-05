@@ -2355,6 +2355,10 @@ def sentix_chat_answer(symbol, question, market):
             "technical": float(data.get("technical", 0) or 0),
             "fundamental": float(data.get("fundamental", 0) or 0),
             "rsi": float(data.get("rsi", 0) or 0),
+            "trend5": float(data.get("trend_5d", 0) or 0),
+            "trend10": float(data.get("trend_10d", 0) or 0),
+            "trend20": float(data.get("trend_20d", 0) or 0),
+            "price_vs_sma": float(data.get("price_vs_sma20", 0) or 0),
             "opportunity": float(
                 data.get("opportunity_score", data.get("confidence", 0))
                 or 0
@@ -2368,17 +2372,24 @@ def sentix_chat_answer(symbol, question, market):
 
     comparison_symbols = []
 
-    known_symbols = [
-        "AAPL",
-        "AMZN",
-        "MSFT",
-        "NVDA",
-        "TSLA",
-    ]
+    import re
 
-    for candidate in known_symbols:
-        if candidate.lower() in q and candidate != symbol:
-            comparison_symbols.append(candidate)
+    question_symbols = set(
+        re.findall(r"\b[A-Z]{1,6}\b", question.upper())
+    )
+
+    universe_symbols = {
+        str(item.get("symbol", "")).upper().strip()
+        for item in get_stock_universe()
+    }
+
+    for candidate_symbol in question_symbols:
+        if (
+            candidate_symbol
+            and candidate_symbol != symbol
+            and candidate_symbol in universe_symbols
+        ):
+            comparison_symbols.append(candidate_symbol)
 
     if (
         any(word in q for word in [
@@ -2405,6 +2416,33 @@ def sentix_chat_answer(symbol, question, market):
             winner = a if a["opportunity"] >= b["opportunity"] else b
             gap = abs(a["opportunity"] - b["opportunity"])
 
+            reasons = []
+
+            if winner["technical"] > (b if winner is a else a)["technical"]:
+                reasons.append(
+                    f"stronger technical score ({winner['technical']:.0f}/100)"
+                )
+
+            if winner["fundamental"] > (b if winner is a else a)["fundamental"]:
+                reasons.append(
+                    f"stronger fundamentals ({winner['fundamental']:.0f}/100)"
+                )
+
+            if winner["trend5"] > (b if winner is a else a)["trend5"]:
+                reasons.append("better 5D trend")
+
+            if winner["trend10"] > (b if winner is a else a)["trend10"]:
+                reasons.append("better 10D trend")
+
+            if winner["rsi"] < 70 <= (b if winner is a else a)["rsi"]:
+                reasons.append("healthier RSI structure")
+
+            explanation = (
+                "; ".join(reasons[:3])
+                if reasons
+                else "the overall signals are very close"
+            )
+
             return (
                 f"SentixAI live comparison: {a['symbol']} vs "
                 f"{b['symbol']}.\n\n"
@@ -2421,7 +2459,11 @@ def sentix_chat_answer(symbol, question, market):
                 f"RSI {b['rsi']:.1f} | "
                 f"Opportunity {b['opportunity']:.1f}/100.\n\n"
                 f"SentixAI currently ranks {winner['symbol']} higher "
-                f"by {gap:.1f} opportunity points."
+                f"by {gap:.1f} opportunity points.\n\n"
+                f"Why: {winner['symbol']} has {explanation}. "
+                f"Both stocks currently carry a {a['decision']} / {b['decision']} signal, "
+                f"so the comparison identifies the stronger setup rather than "
+                f"generating a new recommendation."
             )
 
         except Exception as e:
