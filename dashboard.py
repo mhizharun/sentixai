@@ -2536,17 +2536,37 @@ def sentix_chat_answer(symbol, question, market):
         ])
         and comparison_symbols
     ):
-        other_symbol = comparison_symbols[0]
-
         try:
-            other_response = get_dashboard_data(other_symbol)
-            other_market = other_response.get(
-                "selected",
-                other_response
-            )
+            if len(comparison_symbols) >= 2:
+                first_symbol = comparison_symbols[0]
+                second_symbol = comparison_symbols[1]
 
-            a = stock_summary(symbol, market)
-            b = stock_summary(other_symbol, other_market)
+                first_response = get_dashboard_data(first_symbol)
+                second_response = get_dashboard_data(second_symbol)
+
+                first_market = first_response.get(
+                    "selected",
+                    first_response
+                )
+                second_market = second_response.get(
+                    "selected",
+                    second_response
+                )
+
+                a = stock_summary(first_symbol, first_market)
+                b = stock_summary(second_symbol, second_market)
+
+            else:
+                other_symbol = comparison_symbols[0]
+
+                other_response = get_dashboard_data(other_symbol)
+                other_market = other_response.get(
+                    "selected",
+                    other_response
+                )
+
+                a = stock_summary(symbol, market)
+                b = stock_summary(other_symbol, other_market)
 
             winner = a if a["opportunity"] >= b["opportunity"] else b
             loser = b if winner is a else a
