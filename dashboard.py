@@ -227,7 +227,7 @@ _DASHBOARD_CACHE_SECONDS = 20
 def get_dashboard_data(symbol="AMZN"):
     symbol = symbol.upper()
 
-    if symbol not in SYMBOLS:
+    if not is_known_stock(symbol):
         symbol = "AMZN"
 
     with _DASHBOARD_CACHE_LOCK:
