@@ -1,5 +1,8 @@
 import time
-from mcp.client.streamable_http import streamable_http_client
+try:
+    from mcp.client.streamable_http import streamable_http_client
+except ImportError:
+    from mcp.client.streamable_http import streamablehttp_client as streamable_http_client
 from mcp import ClientSession
 import asyncio
 
@@ -74,6 +77,7 @@ def get_market_data(symbol):
             "prev_close": 0.0,
             "volume": 0.0,
             "change_percent": 0.0,
+            "change_24h": 0.0,
             "momentum": 0.0,
             "sentiment": 50.0,
             "trend_5d": 0.0,
@@ -293,6 +297,7 @@ def get_market_data(symbol):
         "prev_close": prev_close,
         "volume": volume,
         "change_percent": change_percent,
+        "change_24h": change_percent,
         "momentum": momentum,
 
         # Sentiment remains neutral until a verified
@@ -627,6 +632,28 @@ def analyze_market(data):
         technical_score * 0.60
         + fundamental_score * 0.40
     )
+
+    # Live Bitget market adjustment.
+    # This keeps confidence responsive to the current market move
+    # without allowing short-term price noise to dominate the model.
+    live_change = float(data.get("change_24h", 0.0) or 0.0)
+
+    if live_change >= 5:
+        live_adjustment = 4.0
+    elif live_change >= 2:
+        live_adjustment = 2.5
+    elif live_change >= 0.5:
+        live_adjustment = 1.0
+    elif live_change <= -5:
+        live_adjustment = -4.0
+    elif live_change <= -2:
+        live_adjustment = -2.5
+    elif live_change <= -0.5:
+        live_adjustment = -1.0
+    else:
+        live_adjustment = 0.0
+
+    final_score += live_adjustment
 
     final_score = max(0.0, min(100.0, final_score))
 

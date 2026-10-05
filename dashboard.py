@@ -56,21 +56,51 @@ def get_stock(symbol):
     analysis = analyze_market(data)
     thesis = generate_ai_thesis(data, analysis)
 
+    confidence = float(analysis.get("confidence", 0.0))
+    technical = float(analysis.get("technical_score", 0.0))
+    fundamental = float(analysis.get("fundamental_score", 0.0))
+
+    technical_quality = technical - 50.0
+    fundamental_quality = fundamental - 50.0
+
+    opportunity_score = (
+        confidence
+        + (technical_quality * 0.10)
+        + (fundamental_quality * 0.10)
+    )
+
+    opportunity_score = max(
+        0.0,
+        min(100.0, opportunity_score)
+    )
+
+    buy_threshold = (
+        float(MIN_CONFIDENCE)
+        if "MIN_CONFIDENCE" in globals()
+        else 70.0
+    )
+
     return {
         "symbol": symbol,
         "price": data.get("price", 0),
-        "change_24h": data.get("change_24h", data.get("change_percent", 0)),
+        "change_24h": data.get(
+            "change_24h",
+            data.get("change_percent", 0)
+        ),
         "decision": analysis.get("decision", "HOLD"),
-        "confidence": analysis.get("confidence", 0),
-        "buy_threshold": float(MIN_CONFIDENCE) if "MIN_CONFIDENCE" in globals() else 70.0,
+        "confidence": confidence,
+        "opportunity_score": round(opportunity_score, 2),
+        "buy_threshold": buy_threshold,
         "confidence_gap": max(
             0.0,
-            (float(MIN_CONFIDENCE) if "MIN_CONFIDENCE" in globals() else 70.0)
-            - float(analysis.get("confidence", 0))
+            buy_threshold - confidence
         ),
-        "signal_strength": thesis.get("signal_strength", ""),
-        "technical": analysis.get("technical_score", 0),
-        "fundamental": analysis.get("fundamental_score", 0),
+        "signal_strength": thesis.get(
+            "signal_strength",
+            ""
+        ),
+        "technical": technical,
+        "fundamental": fundamental,
         "rsi": data.get("rsi_14", 0),
         "sma20": data.get("sma_20", 0),
         "momentum": data.get("momentum", 0),
@@ -81,7 +111,9 @@ def get_stock(symbol):
         "price_vs_sma20": data.get("price_vs_sma20", 0),
         "bitget_symbol": data.get("bitget_symbol", ""),
         "market_state": data.get("market_state", {}),
-        "historical": normalize_history(data.get("historical", [])),
+        "historical": normalize_history(
+            data.get("historical", [])
+        ),
         "thesis": thesis,
         "source": "Bitget Reality US Stocks",
     }
@@ -456,10 +488,465 @@ canvas {
         font-size: 11px;
     }
 }
+
+/* SENTIXAI WELCOME PAGE */
+#welcome {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 40%, rgba(38, 255, 145, 0.10), transparent 32%),
+        radial-gradient(circle at 20% 80%, rgba(0, 150, 255, 0.08), transparent 28%),
+        #070a0f;
+}
+
+.welcome-grid {
+    position: absolute;
+    inset: 0;
+    opacity: .18;
+    background-image:
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 55px 55px;
+    mask-image: radial-gradient(circle at center, black, transparent 75%);
+}
+
+.welcome-content {
+    position: relative;
+    z-index: 2;
+    width: min(900px, 92%);
+    text-align: center;
+}
+
+.welcome-badge {
+    display: inline-block;
+    padding: 8px 15px;
+    border: 1px solid rgba(38,255,145,.25);
+    border-radius: 999px;
+    color: #26ff91;
+    background: rgba(38,255,145,.06);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    margin-bottom: 25px;
+}
+
+.welcome-logo {
+    font-size: clamp(70px, 13vw, 150px);
+    line-height: .9;
+    font-weight: 1000;
+    letter-spacing: -7px;
+    color: #f4f7fb;
+    text-shadow: 0 0 45px rgba(38,255,145,.10);
+}
+
+.welcome-logo span {
+    color: #26ff91;
+}
+
+.welcome-subtitle {
+    margin-top: 24px;
+    font-size: clamp(15px, 2vw, 21px);
+    font-weight: 800;
+    letter-spacing: 5px;
+    color: #d8dee8;
+}
+
+.welcome-description {
+    max-width: 650px;
+    margin: 22px auto 0;
+    color: #8993a3;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+.enter-btn {
+    margin-top: 34px;
+    padding: 15px 28px;
+    border: 0;
+    border-radius: 10px;
+    background: #26ff91;
+    color: #06100a;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+    cursor: pointer;
+    box-shadow: 0 0 35px rgba(38,255,145,.20);
+    transition: transform .2s, box-shadow .2s;
+}
+
+.enter-btn span {
+    margin-left: 12px;
+    font-size: 18px;
+}
+
+.enter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 45px rgba(38,255,145,.35);
+}
+
+.welcome-features {
+    display: flex;
+    justify-content: center;
+    gap: 45px;
+    margin-top: 55px;
+}
+
+.welcome-features div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.welcome-features strong {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #dce3ec;
+}
+
+.welcome-features span {
+    font-size: 11px;
+    color: #687384;
+}
+
+#app {
+    min-height: 100vh;
+}
+
+@media(max-width: 600px) {
+    .welcome-logo {
+        letter-spacing: -4px;
+    }
+
+    .welcome-subtitle {
+        letter-spacing: 2px;
+    }
+
+    .welcome-features {
+        gap: 18px;
+        margin-top: 40px;
+    }
+
+    .welcome-features strong {
+        font-size: 9px;
+    }
+
+    .welcome-features span {
+        font-size: 9px;
+    }
+}
+
+
+/* SIGNAL BREAKDOWN */
+.signal-breakdown {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #202733;
+}
+
+.breakdown-title {
+    margin-bottom: 10px;
+    color: #8e99aa;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+}
+
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.breakdown-item {
+    padding: 10px;
+    border: 1px solid #202733;
+    border-radius: 8px;
+    background: #0b0f15;
+}
+
+.breakdown-item span {
+    display: block;
+    color: #707b8d;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .8px;
+}
+
+.breakdown-item strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+@media(max-width:550px) {
+    .breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+/* SENTIXAI CHAT */
+.chat-card {
+    margin-top: 16px;
+}
+
+.chat-subtitle {
+    color: #707b8d;
+    font-size: 11px;
+    margin-top: -6px;
+    margin-bottom: 14px;
+}
+
+.chat-window {
+    height: 300px;
+    overflow-y: auto;
+    padding: 12px;
+    border: 1px solid #202733;
+    border-radius: 10px;
+    background: #080c12;
+}
+
+.chat-message {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.chat-message.user {
+    justify-content: flex-end;
+}
+
+.chat-bubble {
+    max-width: 82%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.chat-message.ai .chat-bubble {
+    background: #101722;
+    border: 1px solid #202733;
+    color: #c7ced9;
+}
+
+.chat-message.user .chat-bubble {
+    background: #26ff91;
+    color: #06100a;
+    font-weight: 700;
+}
+
+.chat-quick {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.chat-quick button {
+    border: 1px solid #26303d;
+    background: #0b0f15;
+    color: #aeb8c7;
+    border-radius: 7px;
+    padding: 7px 9px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.chat-quick button:hover {
+    border-color: #26ff91;
+    color: #26ff91;
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #202733;
+    background: #0b0f15;
+    color: #e8edf4;
+    border-radius: 8px;
+    padding: 11px;
+    outline: none;
+    font-size: 12px;
+}
+
+.chat-input:focus {
+    border-color: #26ff91;
+}
+
+.chat-send {
+    border: 0;
+    border-radius: 8px;
+    padding: 0 16px;
+    background: #26ff91;
+    color: #06100a;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.chat-send:hover {
+    filter: brightness(1.08);
+}
+
+@media(max-width:550px) {
+    .chat-window {
+        height: 260px;
+    }
+
+    .chat-bubble {
+        max-width: 90%;
+    }
+}
+
+/* AI ANALYST */
+.analyst-signal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 16px;
+    margin-bottom: 14px;
+    border: 1px solid #202733;
+    border-radius: 10px;
+    background: #0b0f15;
+}
+
+.analyst-decision {
+    margin-top: 5px;
+    font-size: 28px;
+    font-weight: 1000;
+}
+
+.analyst-confidence {
+    text-align: right;
+}
+
+.analyst-confidence strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 22px;
+}
+
+.analyst-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.analyst-box {
+    padding: 11px;
+    border: 1px solid #202733;
+    border-radius: 8px;
+    background: #0b0f15;
+}
+
+.analyst-box strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 16px;
+}
+
+.analyst-section {
+    border-top: 1px solid #202733;
+    padding-top: 14px;
+    margin-top: 14px;
+}
+
+.analyst-section-title {
+    margin-bottom: 9px;
+    color: #8e99aa;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+}
+
+.analyst-driver {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    color: #b8c0cc;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.analyst-driver .dot {
+    width: 6px;
+    height: 6px;
+    margin-top: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: #26ff91;
+}
+
+.analyst-driver.risk .dot {
+    background: #f4c95d;
+}
+
+@media(max-width: 550px) {
+    .analyst-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 </style>
 </head>
 
 <body>
+
+<div id="welcome">
+    <div class="welcome-grid"></div>
+
+    <div class="welcome-content">
+        <div class="welcome-badge">● LIVE U.S. STOCK INTELLIGENCE</div>
+
+        <div class="welcome-logo">
+            SENTIX<span>AI</span>
+        </div>
+
+        <div class="welcome-subtitle">
+            AI-POWERED STOCK MARKET ANALYSIS
+        </div>
+
+        <div class="welcome-description">
+            Analyze U.S. stocks using live Bitget Reality market data,
+            technical indicators, fundamentals, sentiment and AI-driven signals.
+        </div>
+
+        <button class="enter-btn" onclick="enterSentix()">
+            ENTER SENTIXAI
+            <span>→</span>
+        </button>
+
+        <div class="welcome-features">
+            <div>
+                <strong>LIVE DATA</strong>
+                <span>Bitget Reality</span>
+            </div>
+            <div>
+                <strong>AI ANALYSIS</strong>
+                <span>Explainable signals</span>
+            </div>
+            <div>
+                <strong>MARKET SIGNALS</strong>
+                <span>BUY · HOLD · SELL</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="app">
 
 <div class="header">
     <div class="header-inner">
@@ -569,6 +1056,48 @@ canvas {
                     <div id="confidenceBar" style="width:0%"></div>
                 </div>
 
+                <div class="signal-breakdown">
+
+                    <div class="breakdown-title">
+                        SIGNAL BREAKDOWN
+                    </div>
+
+                    <div class="breakdown-grid">
+
+                        <div class="breakdown-item">
+                            <span>24H MOVE</span>
+                            <strong id="break24h">--</strong>
+                        </div>
+
+                        <div class="breakdown-item">
+                            <span>MOMENTUM</span>
+                            <strong id="breakMomentum">--</strong>
+                        </div>
+
+                        <div class="breakdown-item">
+                            <span>5D TREND</span>
+                            <strong id="breakTrend5">--</strong>
+                        </div>
+
+                        <div class="breakdown-item">
+                            <span>10D TREND</span>
+                            <strong id="breakTrend10">--</strong>
+                        </div>
+
+                        <div class="breakdown-item">
+                            <span>20D TREND</span>
+                            <strong id="breakTrend20">--</strong>
+                        </div>
+
+                        <div class="breakdown-item">
+                            <span>PRICE / SMA20</span>
+                            <strong id="breakSma">--</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
             </div>
 
             <div class="card">
@@ -597,11 +1126,121 @@ canvas {
             <div class="card">
 
                 <div class="card-title">
-                    AI INVESTMENT THESIS
+                    SENTIXAI · AI ANALYST
                 </div>
 
-                <div class="ai" id="thesis">
-                    Loading...
+                <div class="analyst-signal">
+                    <div>
+                        <div class="label">AI SIGNAL</div>
+                        <div class="analyst-decision" id="analystDecision">
+                            --
+                        </div>
+                    </div>
+
+                    <div class="analyst-confidence">
+                        <div class="label">CONFIDENCE</div>
+                        <strong id="analystConfidence">--</strong>
+                    </div>
+                </div>
+
+                <div class="analyst-grid">
+
+                    <div class="analyst-box">
+                        <div class="label">TECHNICAL</div>
+                        <strong id="analystTechnical">--</strong>
+                    </div>
+
+                    <div class="analyst-box">
+                        <div class="label">FUNDAMENTAL</div>
+                        <strong id="analystFundamental">--</strong>
+                    </div>
+
+                    <div class="analyst-box">
+                        <div class="label">RSI 14</div>
+                        <strong id="analystRsi">--</strong>
+                    </div>
+
+                    <div class="analyst-box">
+                        <div class="label">BUY GAP</div>
+                        <strong id="analystGap">--</strong>
+                    </div>
+
+                </div>
+
+                <div class="analyst-section">
+                    <div class="analyst-section-title">WHY THIS SIGNAL?</div>
+                    <div id="analystDrivers">
+                        Loading analysis...
+                    </div>
+                </div>
+
+                <div class="analyst-section">
+                    <div class="analyst-section-title">AI INVESTMENT THESIS</div>
+                    <div class="ai" id="thesis">
+                        Loading...
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="card chat-card">
+
+                <div class="card-title">
+                    ASK SENTIXAI
+                </div>
+
+                <div class="chat-subtitle">
+                    Ask about the selected stock using live Bitget Reality market data.
+                </div>
+
+                <div class="chat-window" id="chatWindow">
+
+                    <div class="chat-message ai">
+                        <div class="chat-bubble">
+                            Hello. I'm SentixAI. Ask me about the selected stock,
+                            its signal, RSI, trends, fundamentals or current price.
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="chat-quick">
+
+                    <button onclick="askQuick('Why is this stock HOLD?')">
+                        Why HOLD?
+                    </button>
+
+                    <button onclick="askQuick('What is driving the signal?')">
+                        Signal drivers
+                    </button>
+
+                    <button onclick="askQuick('Is this stock overbought?')">
+                        RSI check
+                    </button>
+
+                    <button onclick="askQuick('What are the current trends?')">
+                        Trends
+                    </button>
+
+                </div>
+
+                <div class="chat-input-row">
+
+                    <input
+                        id="chatInput"
+                        class="chat-input"
+                        type="text"
+                        placeholder="Ask SentixAI..."
+                        onkeydown="if(event.key==='Enter') sendChat()"
+                    >
+
+                    <button
+                        class="chat-send"
+                        onclick="sendChat()"
+                    >
+                        ASK
+                    </button>
+
                 </div>
 
             </div>
@@ -977,8 +1616,63 @@ function render(data) {
         Number(s.confidence) >= 70 ? "#00d4aa" :
         Number(s.confidence) <= 30 ? "#ff6478" : "#f4c95d";
 
+    // Signal Breakdown
+    const live24h = Number(
+        s.change_24h !== undefined ? s.change_24h : s.change_percent
+    );
+
+    const breakdownMomentum = Number(s.momentum || 0);
+    const breakdownTrend5 = Number(s.trend_5d || 0);
+    const breakdownTrend10 = Number(s.trend_10d || 0);
+    const breakdownTrend20 = Number(s.trend_20d || 0);
+    const breakdownPriceVsSma = Number(s.price_vs_sma20 || 0);
+
+    const formatSignal = (value, suffix = "%") => {
+        if (!Number.isFinite(value)) return "--";
+        return (value >= 0 ? "+" : "") + value.toFixed(2) + suffix;
+    };
+
+    document.getElementById("break24h").textContent =
+        formatSignal(live24h);
+
+    document.getElementById("breakMomentum").textContent =
+        formatSignal(breakdownMomentum);
+
+    document.getElementById("breakTrend5").textContent =
+        formatSignal(breakdownTrend5);
+
+    document.getElementById("breakTrend10").textContent =
+        formatSignal(breakdownTrend10);
+
+    document.getElementById("breakTrend20").textContent =
+        formatSignal(breakdownTrend20);
+
+    document.getElementById("breakSma").textContent =
+        formatSignal(breakdownPriceVsSma);
+
+    // Color positive / negative signals
+    [
+        ["break24h", live24h],
+        ["breakMomentum", breakdownMomentum],
+        ["breakTrend5", breakdownTrend5],
+        ["breakTrend10", breakdownTrend10],
+        ["breakTrend20", breakdownTrend20],
+        ["breakSma", breakdownPriceVsSma]
+    ].forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        el.style.color =
+            value > 0 ? "#26ff91" :
+            value < 0 ? "#ff6478" :
+            "#8e99aa";
+    });
+
+    const displayBitgetSymbol =
+        s.bitget_symbol
+            ? s.bitget_symbol.replace(/^R/, "r")
+            : "--";
+
     document.getElementById("bitgetSymbol").textContent =
-        "Bitget symbol: " + s.bitget_symbol;
+        "Bitget Reality symbol: " + displayBitgetSymbol;
 
     const thesis =
         s.thesis && s.thesis.thesis
@@ -987,6 +1681,85 @@ function render(data) {
 
     document.getElementById("thesis").innerHTML =
         thesis.map(x => "<p>• " + x + "</p>").join("");
+
+    // AI Analyst: explain why SentixAI reached this signal
+    const confidence = Number(s.confidence || 0);
+    const technical = Number(s.technical || 0);
+    const fundamental = Number(s.fundamental || 0);
+    const rsi = Number(s.rsi || 0);
+    const gap = Number(s.confidence_gap || 0);
+
+    const analystDecision = document.getElementById("analystDecision");
+
+    analystDecision.textContent = s.decision || "--";
+
+    analystDecision.style.color =
+        s.decision === "BUY" ? "#26ff91" :
+        s.decision === "SELL" ? "#ff6478" :
+        "#f4c95d";
+
+    document.getElementById("analystConfidence").textContent =
+        confidence.toFixed(1) + "%";
+
+    document.getElementById("analystTechnical").textContent =
+        technical.toFixed(0) + "/100";
+
+    document.getElementById("analystFundamental").textContent =
+        fundamental.toFixed(0) + "/100";
+
+    document.getElementById("analystRsi").textContent =
+        rsi ? rsi.toFixed(1) : "--";
+
+    document.getElementById("analystGap").textContent =
+        gap > 0 ? gap.toFixed(1) + " pts" : "READY";
+
+    const drivers = [];
+
+    if (technical >= 65) {
+        drivers.push(["positive", "Technical structure is supporting the signal with a strong technical score."]);
+    } else if (technical < 40) {
+        drivers.push(["risk", "Technical structure is weak and is limiting the signal."]);
+    } else {
+        drivers.push(["risk", "Technical conditions are mixed, keeping the signal from becoming stronger."]);
+    }
+
+    if (fundamental >= 65) {
+        drivers.push(["positive", "Fundamentals are strong and provide additional support."]);
+    } else if (fundamental < 40) {
+        drivers.push(["risk", "Fundamental valuation or forecast factors are weighing on the signal."]);
+    } else {
+        drivers.push(["risk", "Fundamentals are mixed and do not provide a strong confirmation."]);
+    }
+
+    if (rsi >= 70) {
+        drivers.push(["risk", "RSI is elevated, indicating potentially overbought conditions."]);
+    } else if (rsi >= 50 && rsi < 70) {
+        drivers.push(["positive", "RSI remains in a constructive range without extreme overbought conditions."]);
+    } else if (rsi > 0 && rsi < 35) {
+        drivers.push(["positive", "RSI is low, which may indicate an oversold condition."]);
+    } else if (rsi > 0) {
+        drivers.push(["risk", "RSI is below the stronger bullish range."]);
+    }
+
+    const trend5 = Number(s.trend_5d || 0);
+    const trend20 = Number(s.trend_20d || 0);
+
+    if (trend5 > 0 && trend20 > 0) {
+        drivers.push(["positive", "5D and 20D trends are aligned positively."]);
+    } else if (trend5 < 0 && trend20 < 0) {
+        drivers.push(["risk", "5D and 20D trends are both negative."]);
+    } else {
+        drivers.push(["risk", "Short-term and broader trend signals are not fully aligned."]);
+    }
+
+    document.getElementById("analystDrivers").innerHTML =
+        drivers.map(item =>
+            '<div class="analyst-driver ' +
+            (item[0] === "risk" ? "risk" : "") +
+            '"><span class="dot"></span><span>' +
+            item[1] +
+            '</span></div>'
+        ).join("");
 
     const container =
         document.getElementById("stocks");
@@ -999,6 +1772,9 @@ function render(data) {
             document.createElement("div");
 
         row.className = "stock-row";
+        row.style.cursor = "pointer";
+        row.title = "Analyze " + stock.symbol;
+        row.onclick = () => selectSymbol(stock.symbol);
 
         row.innerHTML = `
             <div>
@@ -1045,6 +1821,19 @@ function render(data) {
 }
 
 
+function enterSentix() {
+    const welcome = document.getElementById("welcome");
+
+    welcome.style.transition = "opacity .45s ease, transform .45s ease";
+    welcome.style.opacity = "0";
+    welcome.style.transform = "scale(1.02)";
+
+    setTimeout(() => {
+        welcome.style.display = "none";
+        window.scrollTo(0, 0);
+    }, 450);
+}
+
 async function loadData() {
 
     setMarketStatus();
@@ -1077,6 +1866,83 @@ async function loadData() {
     }
 }
 
+
+
+async function askQuick(question) {
+
+    document.getElementById("chatInput").value = question;
+
+    await sendChat();
+}
+
+function addChatMessage(type, text) {
+
+    const windowEl = document.getElementById("chatWindow");
+
+    const message = document.createElement("div");
+    message.className = "chat-message " + type;
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+    bubble.textContent = text;
+
+    message.appendChild(bubble);
+    windowEl.appendChild(message);
+
+    windowEl.scrollTop = windowEl.scrollHeight;
+}
+
+async function sendChat() {
+
+    const input = document.getElementById("chatInput");
+    const question = input.value.trim();
+
+    if (!question) return;
+
+    addChatMessage("user", question);
+
+    input.value = "";
+
+    addChatMessage("ai", "Analyzing live market data...");
+
+    const loadingBubble =
+        document.querySelector(
+            "#chatWindow .chat-message.ai:last-child .chat-bubble"
+        );
+
+    try {
+
+        const url =
+            "/api/chat?symbol=" +
+            encodeURIComponent(currentSymbol) +
+            "&question=" +
+            encodeURIComponent(question);
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status !== "ok") {
+            throw new Error(
+                data.message || "Chat request failed"
+            );
+        }
+
+        loadingBubble.textContent = data.answer;
+
+    } catch (error) {
+
+        loadingBubble.textContent =
+            "I couldn't analyze that request right now. Please try again.";
+
+        console.error(
+            "SentixAI chat error:",
+            error
+        );
+    }
+
+    document.getElementById("chatWindow").scrollTop =
+        document.getElementById("chatWindow").scrollHeight;
+}
 
 function selectSymbol(symbol) {
 
@@ -1134,6 +2000,398 @@ setInterval(
 '''
 
 
+
+def sentix_chat_answer(symbol, question, market):
+    """
+    SentixAI conversational analyst.
+
+    Uses the same live Bitget Reality analysis powering
+    the dashboard. Supports signal explanations,
+    buy/hold questions, technical/fundamental questions,
+    and live stock comparisons.
+    """
+
+    q = question.lower().strip()
+
+    price = float(market.get("price", 0) or 0)
+    change = float(market.get("change_24h", 0) or 0)
+    confidence = float(market.get("confidence", 0) or 0)
+    buy_threshold = float(market.get("buy_threshold", 70) or 70)
+    confidence_gap = float(
+        market.get("confidence_gap", buy_threshold - confidence)
+        or 0
+    )
+    technical = float(market.get("technical", 0) or 0)
+    fundamental = float(market.get("fundamental", 0) or 0)
+    rsi = float(market.get("rsi", 0) or 0)
+    momentum = float(market.get("momentum", 0) or 0)
+    trend5 = float(market.get("trend_5d", 0) or 0)
+    trend10 = float(market.get("trend_10d", 0) or 0)
+    trend20 = float(market.get("trend_20d", 0) or 0)
+    price_vs_sma = float(market.get("price_vs_sma20", 0) or 0)
+    opportunity = float(
+        market.get("opportunity_score", confidence)
+        or confidence
+    )
+    decision = str(market.get("decision", "HOLD"))
+
+    def stock_summary(stock_symbol, data):
+        return {
+            "symbol": stock_symbol,
+            "price": float(data.get("price", 0) or 0),
+            "change": float(data.get("change_24h", 0) or 0),
+            "confidence": float(data.get("confidence", 0) or 0),
+            "technical": float(data.get("technical", 0) or 0),
+            "fundamental": float(data.get("fundamental", 0) or 0),
+            "rsi": float(data.get("rsi", 0) or 0),
+            "opportunity": float(
+                data.get("opportunity_score", data.get("confidence", 0))
+                or 0
+            ),
+            "decision": str(data.get("decision", "HOLD")),
+        }
+
+    # ---------------------------------------------------------
+    # LIVE STOCK COMPARISON
+    # ---------------------------------------------------------
+
+    comparison_symbols = []
+
+    known_symbols = [
+        "AAPL",
+        "AMZN",
+        "MSFT",
+        "NVDA",
+        "TSLA",
+    ]
+
+    for candidate in known_symbols:
+        if candidate.lower() in q and candidate != symbol:
+            comparison_symbols.append(candidate)
+
+    if (
+        any(word in q for word in [
+            "compare",
+            "versus",
+            " vs ",
+            "better than",
+            "better"
+        ])
+        and comparison_symbols
+    ):
+        other_symbol = comparison_symbols[0]
+
+        try:
+            other_response = get_dashboard_data(other_symbol)
+            other_market = other_response.get(
+                "selected",
+                other_response
+            )
+
+            a = stock_summary(symbol, market)
+            b = stock_summary(other_symbol, other_market)
+
+            winner = a if a["opportunity"] >= b["opportunity"] else b
+            gap = abs(a["opportunity"] - b["opportunity"])
+
+            return (
+                f"SentixAI live comparison: {a['symbol']} vs "
+                f"{b['symbol']}.\n\n"
+                f"{a['symbol']}: {a['decision']} | "
+                f"Confidence {a['confidence']:.1f}% | "
+                f"Technical {a['technical']:.0f}/100 | "
+                f"Fundamental {a['fundamental']:.0f}/100 | "
+                f"RSI {a['rsi']:.1f} | "
+                f"Opportunity {a['opportunity']:.1f}/100.\n\n"
+                f"{b['symbol']}: {b['decision']} | "
+                f"Confidence {b['confidence']:.1f}% | "
+                f"Technical {b['technical']:.0f}/100 | "
+                f"Fundamental {b['fundamental']:.0f}/100 | "
+                f"RSI {b['rsi']:.1f} | "
+                f"Opportunity {b['opportunity']:.1f}/100.\n\n"
+                f"SentixAI currently ranks {winner['symbol']} higher "
+                f"by {gap:.1f} opportunity points."
+            )
+
+        except Exception as e:
+            return (
+                f"I can compare {symbol} with {other_symbol}, "
+                f"but the second live market dataset could not be "
+                f"loaded right now: {type(e).__name__}."
+            )
+
+    # ---------------------------------------------------------
+    # BUY / SELL / SHOULD I BUY QUESTIONS
+    # ---------------------------------------------------------
+
+    buy_question = any(word in q for word in [
+        "should i buy",
+        "buy this",
+        "buy now",
+        "good buy",
+        "worth buying",
+        "enter",
+        "entry",
+    ])
+
+    sell_question = any(word in q for word in [
+        "should i sell",
+        "sell this",
+        "sell now",
+    ])
+
+    if buy_question or sell_question:
+
+        if decision == "BUY":
+            stance = (
+                f"SentixAI currently has a BUY signal for {symbol} "
+                f"with {confidence:.1f}% confidence."
+            )
+        elif decision == "SELL":
+            stance = (
+                f"SentixAI currently has a SELL signal for {symbol} "
+                f"with {confidence:.1f}% confidence."
+            )
+        else:
+            stance = (
+                f"SentixAI currently recommends HOLD for {symbol}. "
+                f"Confidence is {confidence:.1f}%, below the "
+                f"{buy_threshold:.1f}% BUY threshold."
+            )
+
+        reasons = []
+
+        if technical >= 65:
+            reasons.append(
+                f"technical structure is strong at {technical:.0f}/100"
+            )
+        elif technical < 40:
+            reasons.append(
+                f"technical structure is weak at {technical:.0f}/100"
+            )
+        else:
+            reasons.append(
+                f"technical conditions are mixed at {technical:.0f}/100"
+            )
+
+        if fundamental >= 65:
+            reasons.append(
+                f"fundamentals are supportive at {fundamental:.0f}/100"
+            )
+        elif fundamental < 40:
+            reasons.append(
+                f"fundamentals are weak at {fundamental:.0f}/100"
+            )
+        else:
+            reasons.append(
+                f"fundamentals are mixed at {fundamental:.0f}/100"
+            )
+
+        if rsi >= 70:
+            reasons.append(
+                f"RSI is elevated at {rsi:.1f}"
+            )
+        elif rsi <= 35:
+            reasons.append(
+                f"RSI is low at {rsi:.1f}"
+            )
+        else:
+            reasons.append(
+                f"RSI is {rsi:.1f}"
+            )
+
+        return (
+            f"{stance}\n\n"
+            f"Why: {', '.join(reasons)}.\n\n"
+            f"Current price: ${price:,.2f}\n"
+            f"24H move: {change:+.2f}%\n"
+            f"Opportunity score: {opportunity:.1f}/100\n"
+            f"BUY gap: {confidence_gap:.1f} points.\n\n"
+            f"This is SentixAI's market signal, not a guarantee "
+            f"of future performance."
+        )
+
+    # ---------------------------------------------------------
+    # WHY IS THIS SIGNAL?
+    # ---------------------------------------------------------
+
+    if (
+        "why" in q
+        and any(x in q for x in [
+            "hold",
+            "buy",
+            "sell",
+            "signal",
+            "decision"
+        ])
+    ):
+        reasons = []
+
+        if technical >= 65:
+            reasons.append(
+                f"strong technical conditions ({technical:.0f}/100)"
+            )
+        elif technical < 40:
+            reasons.append(
+                f"weak technical conditions ({technical:.0f}/100)"
+            )
+        else:
+            reasons.append(
+                f"mixed technical conditions ({technical:.0f}/100)"
+            )
+
+        if fundamental >= 65:
+            reasons.append(
+                f"supportive fundamentals ({fundamental:.0f}/100)"
+            )
+        elif fundamental < 40:
+            reasons.append(
+                f"weak fundamentals ({fundamental:.0f}/100)"
+            )
+        else:
+            reasons.append(
+                f"mixed fundamentals ({fundamental:.0f}/100)"
+            )
+
+        if trend5 > 0 and trend20 > 0:
+            reasons.append(
+                "positive 5D and 20D trend alignment"
+            )
+        elif trend5 < 0 and trend20 < 0:
+            reasons.append(
+                "negative 5D and 20D trend alignment"
+            )
+        else:
+            reasons.append(
+                "mixed short-term and broader trend signals"
+            )
+
+        if rsi >= 70:
+            reasons.append(
+                f"elevated RSI ({rsi:.1f})"
+            )
+        elif 50 <= rsi < 70:
+            reasons.append(
+                f"constructive RSI ({rsi:.1f})"
+            )
+        else:
+            reasons.append(
+                f"weaker RSI ({rsi:.1f})"
+            )
+
+        return (
+            f"{symbol} is currently {decision} with "
+            f"{confidence:.1f}% confidence.\n\n"
+            f"The signal is based on {', '.join(reasons)}.\n\n"
+            f"BUY threshold: {buy_threshold:.1f}%\n"
+            f"Current opportunity: {opportunity:.1f}/100\n"
+            f"BUY gap: {confidence_gap:.1f} points."
+        )
+
+    # ---------------------------------------------------------
+    # RSI
+    # ---------------------------------------------------------
+
+    if any(x in q for x in [
+        "rsi",
+        "overbought",
+        "oversold"
+    ]):
+        if rsi >= 70:
+            state = "overbought territory"
+        elif rsi <= 35:
+            state = "oversold territory"
+        elif rsi >= 50:
+            state = "a constructive range"
+        else:
+            state = "a weaker range"
+
+        return (
+            f"{symbol} has an RSI-14 of {rsi:.1f}, "
+            f"currently in {state}.\n\n"
+            f"SentixAI does not use RSI alone. It combines RSI "
+            f"with momentum, multi-period trends, SMA20, "
+            f"fundamentals and other market factors."
+        )
+
+    # ---------------------------------------------------------
+    # TREND / MOMENTUM
+    # ---------------------------------------------------------
+
+    if any(x in q for x in [
+        "trend",
+        "momentum",
+        "direction",
+        "moving"
+    ]):
+        return (
+            f"{symbol} is trading at ${price:,.2f}.\n\n"
+            f"24H move: {change:+.2f}%\n"
+            f"Momentum: {momentum:+.2f}%\n"
+            f"5D trend: {trend5:+.2f}%\n"
+            f"10D trend: {trend10:+.2f}%\n"
+            f"20D trend: {trend20:+.2f}%\n"
+            f"Price vs SMA20: {price_vs_sma:+.2f}%"
+        )
+
+    # ---------------------------------------------------------
+    # FUNDAMENTALS
+    # ---------------------------------------------------------
+
+    if any(x in q for x in [
+        "fundamental",
+        "valuation",
+        "p/e",
+        "pe",
+        "financial"
+    ]):
+        return (
+            f"{symbol}'s SentixAI fundamental score is "
+            f"{fundamental:.0f}/100.\n\n"
+            f"Technical score: {technical:.0f}/100\n"
+            f"Fundamental score: {fundamental:.0f}/100\n"
+            f"Confidence: {confidence:.1f}%\n"
+            f"Signal: {decision}\n\n"
+            f"The fundamental score is combined with technical "
+            f"market structure to produce the final signal."
+        )
+
+    # ---------------------------------------------------------
+    # PRICE
+    # ---------------------------------------------------------
+
+    if any(x in q for x in [
+        "price",
+        "trading at",
+        "quote"
+    ]):
+        return (
+            f"{symbol} is currently trading at "
+            f"${price:,.2f} on Bitget Reality.\n\n"
+            f"24H move: {change:+.2f}%\n"
+            f"Signal: {decision}\n"
+            f"Confidence: {confidence:.1f}%"
+        )
+
+    # ---------------------------------------------------------
+    # DEFAULT SUMMARY
+    # ---------------------------------------------------------
+
+    return (
+        f"Here's the current SentixAI view on {symbol}:\n\n"
+        f"Price: ${price:,.2f}\n"
+        f"24H move: {change:+.2f}%\n"
+        f"Signal: {decision}\n"
+        f"Confidence: {confidence:.1f}%\n"
+        f"Technical: {technical:.0f}/100\n"
+        f"Fundamental: {fundamental:.0f}/100\n"
+        f"RSI: {rsi:.1f}\n"
+        f"Opportunity: {opportunity:.1f}/100\n\n"
+        f"You can ask me why the signal is what it is, "
+        f"whether the stock is a good buy, about RSI or trends, "
+        f"or compare it with another stock."
+    )
+
 class DashboardHandler(BaseHTTPRequestHandler):
 
     def send_json(self, payload):
@@ -1181,6 +2439,54 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_json(
                     get_dashboard_data(symbol)
                 )
+
+            except Exception as e:
+
+                self.send_json({
+                    "status": "error",
+                    "message":
+                        f"{type(e).__name__}: {e}"
+                })
+
+            return
+
+        if parsed.path == "/api/chat":
+
+            params = parse_qs(parsed.query)
+
+            symbol = params.get("symbol", ["AMZN"])[0].upper()
+            question = params.get("question", [""])[0].strip()
+
+            if not question:
+
+                self.send_json({
+                    "status": "error",
+                    "message": "Please enter a question."
+                })
+
+                return
+
+            try:
+
+                market_response = get_dashboard_data(symbol)
+
+                market = market_response.get(
+                    "selected",
+                    market_response
+                )
+
+                answer = sentix_chat_answer(
+                    symbol,
+                    question,
+                    market
+                )
+
+                self.send_json({
+                    "status": "ok",
+                    "symbol": symbol,
+                    "question": question,
+                    "answer": answer
+                })
 
             except Exception as e:
 
