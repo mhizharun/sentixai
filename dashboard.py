@@ -1942,6 +1942,10 @@ function enterSentix() {
     setTimeout(() => {
         welcome.style.display = "none";
         window.scrollTo(0, 0);
+
+        requestAnimationFrame(() => {
+            drawChart(currentHistory);
+        });
     }, 450);
 }
 
@@ -2065,6 +2069,11 @@ function selectSymbol(symbol) {
     }
 
     clearStockSearch();
+
+    // Force the searched stock chart to resize before rendering.
+    requestAnimationFrame(() => {
+        drawChart(currentHistory);
+    });
 
     document.querySelectorAll(".tab")
         .forEach(tab => {
