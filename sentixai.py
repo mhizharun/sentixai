@@ -719,6 +719,11 @@ def generate_ai_thesis(data, analysis, ranking=None):
     rsi = number(data.get("rsi_14"))
     sma20 = number(data.get("sma_20"))
     change = number(data.get("change_percent"))
+    momentum = number(data.get("momentum"))
+    trend_5d = number(data.get("trend_5d"))
+    trend_10d = number(data.get("trend_10d"))
+    trend_20d = number(data.get("trend_20d"))
+    price_vs_sma20 = number(data.get("price_vs_sma20"))
 
     thesis = []
 
@@ -786,6 +791,54 @@ def generate_ai_thesis(data, analysis, ranking=None):
     thesis.append(
         "Technical case: " + ", ".join(technical_points) + "."
     )
+
+    # Trend confirmation
+    trend_points = []
+
+    if momentum is not None:
+        trend_points.append(f"24H momentum at {momentum:+.2f}%")
+
+    trend_values = [
+        value for value in (trend_5d, trend_10d, trend_20d)
+        if value is not None
+    ]
+
+    if trend_values:
+        bullish_trends = sum(1 for value in trend_values if value > 0)
+        bearish_trends = sum(1 for value in trend_values if value < 0)
+
+        trend_labels = [
+            ("5D", trend_5d),
+            ("10D", trend_10d),
+            ("20D", trend_20d),
+        ]
+
+        trend_points.extend(
+            f"{label} {value:+.2f}%"
+            for label, value in trend_labels
+            if value is not None
+        )
+
+        if bullish_trends == len(trend_values):
+            trend_points.append("all tracked trends are bullish")
+        elif bearish_trends == len(trend_values):
+            trend_points.append("all tracked trends are bearish")
+        elif bullish_trends > bearish_trends:
+            trend_points.append("trend structure leans bullish")
+        elif bearish_trends > bullish_trends:
+            trend_points.append("trend structure leans bearish")
+        else:
+            trend_points.append("multi-period trends are mixed")
+
+    if price_vs_sma20 is not None:
+        trend_points.append(
+            f"price is {price_vs_sma20:+.2f}% vs the 20-day SMA"
+        )
+
+    if trend_points:
+        thesis.append(
+            "Trend confirmation: " + ", ".join(trend_points) + "."
+        )
 
     # Fundamental case
     fundamental_points = []
