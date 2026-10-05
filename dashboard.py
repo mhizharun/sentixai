@@ -2125,6 +2125,15 @@ async function loadData() {
 
 async function askQuick(question) {
 
+    const symbol = currentSymbol || "";
+
+    if (
+        symbol &&
+        !question.toUpperCase().includes(symbol.toUpperCase())
+    ) {
+        question = symbol + " " + question;
+    }
+
     document.getElementById("chatInput").value = question;
 
     await sendChat();
