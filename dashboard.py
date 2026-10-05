@@ -1004,7 +1004,7 @@ canvas {
 
 <body>
 
-<div id="welcome">
+<div id="welcome" style="display:none;">
     <div class="welcome-grid"></div>
 
     <div class="welcome-content">
