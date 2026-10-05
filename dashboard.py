@@ -2159,8 +2159,19 @@ function chooseSearchedStock(symbol) {
     }
 
     clearStockSearch();
-    selectSymbol(symbol);
+
+    currentSymbol = String(symbol).toUpperCase();
+
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.toggle(
+            "active",
+            tab.dataset.symbol === currentSymbol
+        );
+    });
+
+    loadData();
 }
+
 
 async function searchStocks(query) {
     const results = document.getElementById("stockSearchResults");
@@ -2198,7 +2209,9 @@ async function searchStocks(query) {
                 return;
             }
 
-            results.innerHTML = data.stocks.map(stock => {
+            results.innerHTML = "";
+
+            data.stocks.forEach(stock => {
                 const symbol = String(stock.symbol || "");
                 const name = String(
                     stock.name || symbol
@@ -2212,24 +2225,37 @@ async function searchStocks(query) {
                     .replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;");
 
-                return (
-                    '<button class="stock-search-result" ' +
-                    'type="button" ' +
-                    'onclick="chooseSearchedStock(' +
-                    JSON.stringify(symbol) +
-                    ')">' +
-                    '<span class="stock-search-symbol">' +
-                    symbol +
-                    '</span>' +
-                    '<span class="stock-search-name">' +
-                    name +
-                    '</span>' +
-                    '<span class="stock-search-bitget">' +
-                    bitget +
-                    '</span>' +
-                    '</button>'
-                );
-            }).join("");
+                const button = document.createElement("button");
+
+                button.type = "button";
+                button.className = "stock-search-result";
+
+                const symbolEl = document.createElement("span");
+                symbolEl.className = "stock-search-symbol";
+                symbolEl.textContent = symbol;
+
+                const nameEl = document.createElement("span");
+                nameEl.className = "stock-search-name";
+                nameEl.textContent = name;
+
+                const bitgetEl = document.createElement("span");
+                bitgetEl.className = "stock-search-bitget";
+                bitgetEl.textContent = bitget;
+
+                button.appendChild(symbolEl);
+                button.appendChild(nameEl);
+                button.appendChild(bitgetEl);
+
+                button.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    chooseSearchedStock(symbol);
+                });
+
+                results.appendChild(button);
+
+                return;
+            });
 
             results.style.display = "block";
 
