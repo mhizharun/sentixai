@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.tar.gz
+*.log
+.env
+.git/
+*.backup*
+*.before_*
+*.mcp503_backup
+sentixai_backup*.py
+sentixai_before_*.py
+*_test.py
+*_check.py
+open_positions.json
+portfolio.json
+trade_journal.json
+sentixai_state.json
